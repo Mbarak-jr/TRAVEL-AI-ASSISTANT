@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function TravelAssistant() {
   const [query, setQuery] = useState('');
@@ -9,6 +11,19 @@ export default function TravelAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [history, setHistory] = useState([]);
+
+  // Load history from localStorage on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('queryHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('queryHistory', JSON.stringify(history));
+  }, [history]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,14 +34,22 @@ export default function TravelAssistant() {
     setIsLoading(true);
     setError('');
     try {
-      const res = await axios.post('http://localhost:8000/query', {
+      const res = await axios.post(`${API_URL}/query`, {
         question: query,
       });
       setResponse(res.data.response);
-      setHistory(prev => [{ question: query, answer: res.data.response }, ...prev.slice(0, 4)]);
+      setHistory(prev => [
+        { 
+          question: query, 
+          answer: res.data.response,
+          timestamp: new Date().toISOString() 
+        }, 
+        ...prev.slice(0, 4)
+      ]);
       setQuery('');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to fetch response');
+      console.error('API Error:', err);
+      setError(err.response?.data?.detail || 'Failed to fetch response. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -34,6 +57,15 @@ export default function TravelAssistant() {
 
   const handleCloseResponse = () => {
     setResponse('');
+  };
+
+  const handleHistoryItemClick = (historyItem) => {
+    setQuery(historyItem.question);
+    setResponse(historyItem.answer);
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
   };
 
   return (
@@ -130,15 +162,33 @@ export default function TravelAssistant() {
           {/* History Section */}
           {history.length > 0 && (
             <div className="p-6 md:p-8 border-t border-gray-100">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">Recent Queries</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-800">Recent Queries</h3>
+                <button 
+                  onClick={clearHistory}
+                  className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Clear History
+                </button>
+              </div>
               <div className="space-y-3">
                 {history.map((item, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                  <div 
+                    key={index} 
+                    className="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => handleHistoryItemClick(item)}
+                  >
                     <p className="text-sm text-gray-600 mb-1">
                       <span className="font-medium">Q:</span> {item.question}
                     </p>
                     <p className="text-sm text-gray-800 line-clamp-2">
                       <span className="font-medium">A:</span> {item.answer.split('\n')[0]}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(item.timestamp).toLocaleString()}
                     </p>
                   </div>
                 ))}
@@ -149,7 +199,7 @@ export default function TravelAssistant() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Need more help? Contact our support team.</p>
+          <p className="mt-1">Need more help? Contact our support team.</p>
         </div>
       </div>
     </div>
