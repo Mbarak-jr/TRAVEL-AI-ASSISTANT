@@ -46,14 +46,18 @@ else:
         logger.warning(f"Failed to configure Gemini client: {str(e)}")
         USE_MOCK = True
 
-# CORS middleware
+# Read allowed origin from environment
+origins = [
+    os.getenv("FRONTEND_URL")
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,      # now only your Vercel frontend
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Data model
 class UserQuery(BaseModel):
     question: str
