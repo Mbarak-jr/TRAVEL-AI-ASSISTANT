@@ -48,12 +48,13 @@ else:
 
 # Read allowed origin from environment
 origins = [
-    os.getenv("FRONTEND_URL")
+    "https://travel-ai-assistant-tau.vercel.app",  # No trailing slash!
+    "http://localhost:3000"  # For local development
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,      # now only your Vercel frontend
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
